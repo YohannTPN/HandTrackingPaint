@@ -215,6 +215,14 @@ class UI:
         self.color_wheel.brightness = brightness
         self.color_wheel._update_wheel_image()  
 
+    # ---------- Opacity ----------
+    def get_opacity(self):
+        return self.current_brush().opacity
+
+    def set_opacity(self,opacity):
+        self.current_brush().opacity = opacity
+
+
     def save(self):
         filename = f"paint_{int(time.time())}.png"
         cv2.imwrite(filename, self.canvas)
@@ -228,7 +236,7 @@ class UI:
         column_h = PREVIEW_SIZE + PREVIEW_SWATCH_GAP + SWATCH_SIZE
 
         panel_w = 2 * PANEL_MARGIN + WHEEL_SIZE + PANEL_GAP + swatches_w
-        panel_h = 2 * PANEL_MARGIN + WHEEL_SIZE + 2 * (PANEL_GAP + SLIDER_HEIGHT)
+        panel_h = 2 * PANEL_MARGIN + WHEEL_SIZE + 3 * (PANEL_GAP + SLIDER_HEIGHT)
 
         # Origine du panneau : centré dans l'image
         px = (frame_w - panel_w) // 2
@@ -248,13 +256,17 @@ class UI:
         slider_w = panel_w - 2 * PANEL_MARGIN
         brightness_pos = (px + PANEL_MARGIN, wheel_pos[1] + WHEEL_SIZE + PANEL_GAP)
         thickness_pos = (px + PANEL_MARGIN, brightness_pos[1] + SLIDER_HEIGHT + PANEL_GAP)
+        opacity_pos = (px + PANEL_MARGIN, thickness_pos[1] + SLIDER_HEIGHT + PANEL_GAP)
+
 
         self.color_wheel = ColorWheel(wheel_pos, (WHEEL_SIZE, WHEEL_SIZE))
         thickness_slider = Slider(thickness_pos, (slider_w, SLIDER_HEIGHT), 1, 50,
                                 self.get_brush_thickness, self.set_brush_thickness, "thickness", step=1)
         brightness_slider = Slider(brightness_pos, (slider_w, SLIDER_HEIGHT), 0, 255,
                                 self.get_brightness, self.set_brightness, "brightness", step=1)
-        self.panel = Panel((px, py), (panel_w, panel_h), [thickness_slider, brightness_slider],
+        opacity_slider =  Slider(opacity_pos, (slider_w, SLIDER_HEIGHT), 0, 255,
+                                self.get_opacity, self.set_opacity, "opacity", step=1)
+        self.panel = Panel((px, py), (panel_w, panel_h), [thickness_slider, brightness_slider,opacity_slider],
                         self.color_wheel, preview_pos, PREVIEW_SIZE, self.current_color,
                         swatch_rects, self.get_color_history)
 
