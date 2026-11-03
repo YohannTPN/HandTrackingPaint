@@ -42,6 +42,7 @@ class UI:
         self.eraser = Brush(color=WHITE, thickness=20)
         
         self.canvas = None
+        self.stroke_mask = None
         self.buttons = buttons if buttons is not None else []
 
         self.is_panel_open = False
@@ -111,10 +112,20 @@ class UI:
     def ensure_canvas(self, w, h):
         if self.canvas is None:
             self.canvas = np.full((h, w, 3), 255, dtype=np.uint8)
+            self.stroke_mask = np.zeros((h, w), dtype=np.uint8)
             self.build_panel(w, h)
 
     def draw_line(self, p1, p2):
-        cv2.line(self.canvas, p1, p2, self.current_brush().color, self.current_brush().thickness, cv2.LINE_8)
+        cv2.line(self.stroke_mask, p1, p2, 255, self.current_brush().thickness, cv2.LINE_8)
+
+    def apply_stroke(self, target):
+        """Mélange le trait (masque) sur `target`, avec la couleur et l'opacité du pinceau."""
+        brush = self.current_brush()
+        alpha = brush.opacity / 255.0
+        pixels = self.stroke_mask > 0
+
+        mixed = target[pixels].astype(np.float32) * (1 - alpha) + np.array(brush.color, np.float32) * alpha
+        target[pixels] = np.rint(mixed).astype(np.uint8)
 
     def add_button(self, pos, size, label, action):
         self.buttons.append(Button(pos, size, label, action))
@@ -134,6 +145,10 @@ class UI:
     def on_release(self):
         if self.active_slider is not None:
             self.active_slider = None
+
+        if self.stroke_mask is not None and self.stroke_mask.any():
+            self.apply_stroke(self.canvas)
+            self.stroke_mask[:] = 0
 
     def handle_click(self, point):
         if self.is_panel_open:
@@ -276,6 +291,8 @@ class UI:
 
     def _compose(self, cursor, drawing):
         view = self.canvas.copy()
+        if self.stroke_mask.any():
+            self.apply_stroke(view)
 
         
         for button in self.buttons:
