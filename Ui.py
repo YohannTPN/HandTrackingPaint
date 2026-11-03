@@ -99,11 +99,20 @@ class UI:
         self.active_tool = "fill"
 
 
-    def fill_canvas(self, canvas, point):
-        """Remplit le canvas à partir d'un point donné."""
-        h, w = canvas.shape[:2]
-        mask = np.zeros((h + 2, w + 2), np.uint8)
-        cv2.floodFill(canvas, mask, point, self.current_brush().color, flags=cv2.FLOODFILL_FIXED_RANGE,loDiff=(30, 30, 30), upDiff=(30, 30, 30))
+    def point_in_canvas(self, point):
+        x, y = point
+        h, w = self.canvas.shape[:2]
+        return 0 <= x < w and 0 <= y < h
+
+    def fill_canvas(self, point):
+        h, w = self.canvas.shape[:2]
+        flood_mask = np.zeros((h + 2, w + 2), np.uint8)
+        flags = cv2.FLOODFILL_MASK_ONLY | cv2.FLOODFILL_FIXED_RANGE | (255 << 8)
+        cv2.floodFill(self.canvas, flood_mask, point, 0, loDiff=(30, 30, 30), upDiff=(30, 30, 30), flags=flags)
+
+        region = flood_mask[1:-1, 1:-1] > 0
+        brush = self.current_brush()
+        self.blend_region(self.canvas, region, brush.color, brush.opacity)
 
 
 
@@ -118,14 +127,15 @@ class UI:
     def draw_line(self, p1, p2):
         cv2.line(self.stroke_mask, p1, p2, 255, self.current_brush().thickness, cv2.LINE_8)
 
-    def apply_stroke(self, target):
-        """Mélange le trait (masque) sur `target`, avec la couleur et l'opacité du pinceau."""
-        brush = self.current_brush()
-        alpha = brush.opacity / 255.0
-        pixels = self.stroke_mask > 0
+    def blend_region(self, target, region, color, opacity):
+        """Mélange `color` sur `target` aux pixels où `region` (tableau booléen h x w) est vrai."""
+        alpha = opacity / 255.0
+        mixed = target[region].astype(np.float32) * (1 - alpha) + np.array(color, np.float32) * alpha
+        target[region] = np.rint(mixed).astype(np.uint8)
 
-        mixed = target[pixels].astype(np.float32) * (1 - alpha) + np.array(brush.color, np.float32) * alpha
-        target[pixels] = np.rint(mixed).astype(np.uint8)
+    def apply_stroke(self, target):
+        brush = self.current_brush()
+        self.blend_region(target, self.stroke_mask > 0, brush.color, brush.opacity)
 
     def add_button(self, pos, size, label, action):
         self.buttons.append(Button(pos, size, label, action))
@@ -178,8 +188,9 @@ class UI:
             return True
 
         if self.active_tool == "fill":
-            self.register_state()
-            self.fill_canvas(self.canvas, point)
+            if self.point_in_canvas(point):
+                self.register_state()
+                self.fill_canvas(point)
             return True
 
         return False
@@ -237,6 +248,11 @@ class UI:
     def set_opacity(self,opacity):
         self.current_brush().opacity = opacity
 
+    def preview_color(self):
+        brush = self.current_brush()
+        alpha = brush.opacity / 255.0
+        return tuple(int(c * alpha + 255 * (1 - alpha)) for c in brush.color)
+
 
     def save(self):
         filename = f"paint_{int(time.time())}.png"
@@ -279,10 +295,10 @@ class UI:
                                 self.get_brush_thickness, self.set_brush_thickness, "thickness", step=1)
         brightness_slider = Slider(brightness_pos, (slider_w, SLIDER_HEIGHT), 0, 255,
                                 self.get_brightness, self.set_brightness, "brightness", step=1)
-        opacity_slider =  Slider(opacity_pos, (slider_w, SLIDER_HEIGHT), 0, 255,
+        opacity_slider =  Slider(opacity_pos, (slider_w, SLIDER_HEIGHT), 1, 255,
                                 self.get_opacity, self.set_opacity, "opacity", step=1)
         self.panel = Panel((px, py), (panel_w, panel_h), [thickness_slider, brightness_slider,opacity_slider],
-                        self.color_wheel, preview_pos, PREVIEW_SIZE, self.current_color,
+                        self.color_wheel, preview_pos, PREVIEW_SIZE, self.preview_color,
                         swatch_rects, self.get_color_history)
 
     def show(self, camera_frame, cursor=None, drawing=False):
