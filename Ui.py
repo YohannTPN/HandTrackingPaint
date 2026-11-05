@@ -8,6 +8,7 @@ from Slider import Slider
 from ColorWheel import ColorWheel
 from Brush import Brush
 from Panel import Panel
+from LayerStack import LayerStack
 
 DEFAULT_THICKNESS = 6
 WHITE = (255, 255, 255)
@@ -41,7 +42,7 @@ class UI:
         self.brush = brush if brush is not None else Brush()
         self.eraser = Brush(color=WHITE, thickness=20)
         
-        self.canvas = None
+        self.layers = None
         self.stroke_mask = None
         self.buttons = buttons if buttons is not None else []
 
@@ -63,6 +64,11 @@ class UI:
         self.add_button((340, 10), (80, 30), "Eraser", lambda: self.use_eraser())
         self.add_button((440, 10), (80, 30), "Undo", lambda: self.pop_last_action())
         self.add_button((540, 10), (80, 30), "Restore", lambda: self.restore_state())
+
+        self.add_button((10, 50), (100, 30), "Layer +", lambda: self.add_layer())
+        self.add_button((120, 50), (100, 30), "Layer -", lambda: self.delete_layer())
+        self.add_button((230, 50), (80, 30), "Prev", lambda: self.select_previous_layer())
+        self.add_button((320, 50), (80, 30), "Next", lambda: self.select_next_layer())
 
         
 
@@ -101,26 +107,23 @@ class UI:
 
     def point_in_canvas(self, point):
         x, y = point
-        h, w = self.canvas.shape[:2]
-        return 0 <= x < w and 0 <= y < h
+        return 0 <= x < self.layers.width and 0 <= y < self.layers.height
 
     def fill_canvas(self, point):
-        h, w = self.canvas.shape[:2]
+        h, w = h, w = self.layers.height, self.layers.width
         flood_mask = np.zeros((h + 2, w + 2), np.uint8)
         flags = cv2.FLOODFILL_MASK_ONLY | cv2.FLOODFILL_FIXED_RANGE | (255 << 8)
-        cv2.floodFill(self.canvas, flood_mask, point, 0, loDiff=(30, 30, 30), upDiff=(30, 30, 30), flags=flags)
+        image = self.layers.composite()
+        cv2.floodFill(image, flood_mask, point, 0, loDiff=(30, 30, 30), upDiff=(30, 30, 30), flags=flags)
 
         region = flood_mask[1:-1, 1:-1] > 0
         brush = self.current_brush()
-        self.blend_region(self.canvas, region, brush.color, brush.opacity)
-
-
-
+        self.layers.active.paint(region, brush.color, brush.opacity)
 
 
     def ensure_canvas(self, w, h):
-        if self.canvas is None:
-            self.canvas = np.full((h, w, 3), 255, dtype=np.uint8)
+        if self.layers is None:
+            self.layers = LayerStack(w,h)
             self.stroke_mask = np.zeros((h, w), dtype=np.uint8)
             self.build_panel(w, h)
 
@@ -133,9 +136,14 @@ class UI:
         mixed = target[region].astype(np.float32) * (1 - alpha) + np.array(color, np.float32) * alpha
         target[region] = np.rint(mixed).astype(np.uint8)
 
-    def apply_stroke(self, target):
+    def apply_stroke(self, layer):
         brush = self.current_brush()
-        self.blend_region(target, self.stroke_mask > 0, brush.color, brush.opacity)
+        region = self.stroke_mask > 0
+        if self.active_tool =="eraser":
+            layer.erase(region,brush.opacity)
+        else :
+            layer.paint(region, brush.color, brush.opacity)
+
 
     def add_button(self, pos, size, label, action):
         self.buttons.append(Button(pos, size, label, action))
@@ -157,7 +165,7 @@ class UI:
             self.active_slider = None
 
         if self.stroke_mask is not None and self.stroke_mask.any():
-            self.apply_stroke(self.canvas)
+            self.apply_stroke(self.layers.active)
             self.stroke_mask[:] = 0
 
     def handle_click(self, point):
@@ -205,7 +213,7 @@ class UI:
 
     def register_state(self):
         """Enregistre l'état actuel du canvas pour permettre l'annulation."""
-        self.actions_history.append(self.canvas.copy())
+        self.actions_history.append((self.layers.active_index, self.layers.active.data.copy()))
         self.restore_history.clear()  
         self.remember_color()
 
@@ -214,16 +222,20 @@ class UI:
     def restore_state(self):
         """Restaure l'état précédent du canvas après une annulation."""
         if self.restore_history:
-            last_state = self.restore_history.pop()
-            self.actions_history.append(self.canvas.copy())
-            self.canvas[:] = last_state[:]
+            index, snapshot = self.restore_history.pop()
+            layer = self.layers.layers[index]
+            self.actions_history.append((index, layer.data.copy()))
+            layer.data[:] = snapshot
+            self.layers.select(index)
 
     def pop_last_action(self):
         """Annule la dernière action."""
         if self.actions_history:
-            self.restore_history.append(self.canvas.copy())  
-            last_action = self.actions_history.pop()
-            self.canvas[:] = last_action[:]
+            index, snapshot = self.actions_history.pop()
+            layer = self.layers.layers[index]
+            self.restore_history.append((index, layer.data.copy()))
+            layer.data[:] = snapshot
+            self.layers.select(index)
 
     # ---------- Brush Thickness ----------
 
@@ -256,8 +268,31 @@ class UI:
 
     def save(self):
         filename = f"paint_{int(time.time())}.png"
-        cv2.imwrite(filename, self.canvas)
+        cv2.imwrite(filename, self.layers.composite())
         print(f"Dessin sauvegardé : {filename}")
+
+    #----------- Layer --------------
+
+    def clear_history(self):
+        self.actions_history.clear()
+        self.restore_history.clear()
+
+    def add_layer(self):
+        if self.layers.add() is not None:
+            self.clear_history()
+
+    def delete_layer(self):
+        if self.layers.delete_active():
+            self.clear_history()
+
+    def select_next_layer(self):
+        self.layers.select(self.layers.active_index + 1)
+
+    def select_previous_layer(self):
+        self.layers.select(self.layers.active_index - 1)
+
+    def layer_label(self):
+        return f"Layer {self.layers.active_index + 1}/{len(self.layers.layers)}"
 
     # ---------- Affichage ----------
 
@@ -271,7 +306,8 @@ class UI:
 
         # Origine du panneau : centré dans l'image
         px = (frame_w - panel_w) // 2
-        py = (frame_h - panel_h) // 2
+        toolbar_bottom = max(b.pos[1] + b.size[1] for b in self.buttons)
+        py = toolbar_bottom + (frame_h - toolbar_bottom - panel_h) // 2
 
         wheel_pos = (px + PANEL_MARGIN, py + PANEL_MARGIN)
 
@@ -306,9 +342,12 @@ class UI:
         cv2.imshow('Paint', self._compose(cursor, drawing))
 
     def _compose(self, cursor, drawing):
-        view = self.canvas.copy()
         if self.stroke_mask.any():
-            self.apply_stroke(view)
+            preview = self.layers.active.copy()
+            self.apply_stroke(preview)
+            view = self.layers.composite(active_override=preview)
+        else:
+            view = self.layers.composite()
 
         
         for button in self.buttons:
@@ -318,6 +357,9 @@ class UI:
             cv2.rectangle(view, (x, y), (x + w, y + h), (100, 100, 100), 2)
             cv2.putText(view, button.label, (x + 10, y + 22),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (50, 50, 50), 1)
+
+        cv2.putText(view, self.layer_label(), (410, 72),
+            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (50, 50, 50), 1)
 
 
         if self.is_panel_open:
