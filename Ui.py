@@ -85,6 +85,9 @@ class UI:
     def open_panel(self):
         self.is_panel_open = True
 
+    def toggle_panel(self):
+        self.is_panel_open = not self.is_panel_open
+
     def use_brush(self):
         self.active_tool = "brush"
 
