@@ -1,175 +1,346 @@
 # HandTracking Paint
 
-Draw in the air. A small Paint-style application controlled entirely by your hand: a webcam
-tracks your thumb and index finger with [MediaPipe Hand Landmarker](https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker),
-and a **pinch** is your mouse button.
+**Draw in the air.** HandTracking Paint is a Paint-style drawing application controlled entirely by hand gestures. It uses your webcam and [MediaPipe Hand Landmarker](https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker) to track your hands: pinch your thumb and index finger together to draw, click buttons, and interact with the interface without a mouse.
+
+The application uses two hands:
+- **Drawing hand:** controls the cursor and draws using a pinch gesture.
+- **Command hand:** triggers tools and interface actions using predefined gestures.
 
 ## Features
 
-- **Pinch to draw**: pinch your thumb and index finger together to draw on a white canvas.
-- **Pinch to click**: the same gesture presses toolbar buttons and drags sliders. No mouse needed.
-- **Tools**: brush, eraser, flood fill.
-- **Undo / Restore** (10 steps).
-- **Colour panel**:
-  - colour wheel (hue and saturation) with a brightness slider, so true black is reachable,
-  - brush size slider,
-  - live preview of the current colour,
-  - history of the last 5 colours you actually painted with.
-- **Save** your drawing as a PNG.
+- **Pinch to draw:** pinch your thumb and index finger together and move your hand to draw.
+- **Pinch to click:** interact with toolbar buttons, layer controls, and sliders without a mouse.
+- **Two-hand control:** use one hand for drawing and the other for commands.
+- **Gesture commands:** undo, redo, switch tools, and toggle the colour panel.
+- **Tools:** brush, eraser, and flood fill.
+- **Layers:** create, delete, select, and toggle the visibility of layers.
+- **Undo / Redo:** restore previous drawing states, with up to 30 history entries.
+- **Colour panel:**
+  - HSV colour wheel with adjustable brightness.
+  - Brush size slider.
+  - Brush opacity slider.
+  - Live preview of the current colour.
+  - History of the last five colours used.
+- **Responsive interface:** the layout adapts to the camera resolution.
+- **Startup tutorial:** an on-screen guide explains the gestures when the application starts. Press `H` to reopen it.
+- **Save:** export your drawing as a PNG image.
 
 ## Requirements
 
-- Python 3.11 (the version the project was developed on)
-- A webcam
-- The MediaPipe `hand_landmarker.task` model file (already in the folder)
+- Python 3.11 (the version used during development).
+- A webcam.
+- The MediaPipe `hand_landmarker.task` model file.
+- The dependencies listed in `requirements.txt`.
 
 ## Installation
 
-1. Clone or download the project, then create an isolated environment.
+### 1. Clone or download the project
 
-   With conda:
+Open a terminal in the project folder.
 
-   ```bash
-   conda create -n handtracking python=3.11
-   conda activate handtracking
-   ```
+Create an isolated Python environment.
 
-   Or with venv:
+**Using Conda:**
 
-   ```bash
-   python -m venv .venv
-   # Windows
-   .venv\Scripts\activate
-   # macOS / Linux
-   source .venv/bin/activate
-   ```
+```bash
+conda create -n handtracking python=3.11
+conda activate handtracking
+```
 
-2. Install the dependencies:
+**Or using venv:**
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+```bash
+python -m venv .venv
+```
 
-3. Download the hand landmarker model into the project folder (if the file has magically dissapeared):
+On Windows:
 
-   ```bash
-   curl -L -o hand_landmarker.task https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task
-   ```
+```bash
+.venv\Scripts\activate
+```
 
-   On Windows PowerShell, `curl` is an alias for `Invoke-WebRequest` and rejects these options:
-   use `curl.exe` instead, or download the file from the URL above with your browser.
+On macOS / Linux:
+
+```bash
+source .venv/bin/activate
+```
+
+### 2. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Download the MediaPipe model
+
+The `hand_landmarker.task` model should already be included in the project folder.
+
+If it is missing, download it with:
+
+```bash
+curl -L -o hand_landmarker.task https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task
+```
+
+On Windows PowerShell, use `curl.exe` instead of `curl`, or download the file directly through your browser.
 
 ## Usage
 
-Run the app **from the project folder** (the model is loaded with a relative path):
+Run the application from the project folder:
 
 ```bash
 python main.py
 ```
 
-Two windows open: **Camera** (your hand with its skeleton) and **Paint** (the canvas).
+Two windows will open:
 
-### Controls
+- **Camera:** displays the webcam feed and detected hand landmarks.
+- **Paint:** displays the drawing canvas and the application interface.
 
-| Action | Gesture / key |
+The gesture tutorial appears automatically when the application starts.
+
+## Controls
+
+### Drawing hand
+
+By default, the **right hand** is used for drawing.
+
+| Action | Gesture |
 |---|---|
-| Move the cursor | Move your hand (the cursor sits between thumb tip and index tip) |
-| Draw | Pinch thumb and index, then move |
-| Click a button | Pinch while the cursor is over it |
-| Drag a slider | Pinch on it and move sideways (you can leave the slider area while dragging) |
-| Save the drawing | `s` (writes `paint_<timestamp>.png` in the working directory) |
-| Quit | `q` |
+| Move the cursor | Move your hand |
+| Draw | Pinch your thumb and index finger together, then move |
+| Click a button | Pinch while the cursor is over the button |
+| Drag a slider | Pinch on the slider and move your hand |
+
+The cursor is positioned between the tip of your thumb and the tip of your index finger.
+
+### Command hand
+
+By default, the **left hand** is used for commands.
+
+Make a fist to arm the command hand, then perform one of the following gestures:
+
+| Gesture | Action |
+|---|---|
+| One finger | Undo |
+| Two fingers | Redo |
+| Three fingers | Select brush |
+| Four fingers | Select eraser |
+| OK gesture | Toggle colour panel |
+
+The command hand is temporarily ignored while the drawing hand is drawing a stroke.
+
+### Keyboard shortcuts
+
+| Key | Action |
+|---|---|
+| `H` | Open or close the tutorial |
+| `SPACE` | Close the tutorial |
+| `ENTER` | Close the tutorial |
+| `ESC` | Close the tutorial |
+| `S` | Save the drawing as a PNG |
+| `Q` | Quit the application |
+
+Saved drawings are named `paint_<timestamp>.png` and written to the current working directory.
+
+## Interface
 
 ### Toolbar
 
+The toolbar provides access to the main tools and actions.
+
 | Button | Effect |
 |---|---|
-| Panel | Opens the colour panel |
 | Brush | Selects the brush |
 | Fill | Selects the flood-fill tool |
-| Gomme | Selects the eraser |
-| Undo / Restore | Steps back and forth through your last actions |
+| Eraser | Selects the eraser |
+| Undo | Reverts the last action |
+| Redo | Restores the last reverted action |
+| Colors | Opens the colour panel |
+| Save | Saves the current drawing |
+
+### Layers
+
+The layer panel allows you to manage your drawing in separate layers.
+
+Available actions:
+
+- **New layer:** creates a new layer.
+- **Delete layer:** deletes the active layer.
+- **Previous / Next:** switches between layers.
+- **Toggle eye:** shows or hides the active layer.
+- **Layer selection:** select a layer from the layer list.
+
+The layer system supports up to five layers.
 
 ### Colour panel
 
-Opening the panel shows the colour wheel, the brightness and thickness sliders, a preview of the
-current colour and your last five colours. Pinch a colour on the wheel or in the history to select it.
-Pinching anywhere **outside** the panel closes it. The panel is modal: while it is open,
-nothing is drawn.
+The colour panel contains:
 
-## How it works
+- An HSV colour wheel.
+- A brightness slider.
+- A brush size slider.
+- An opacity slider.
+- A preview of the current colour.
+- A history of the five most recently used colours.
 
-- **Pinch detection**: the distance between thumb tip (landmark 4) and index tip (landmark 8)
-  is divided by the size of the hand (wrist to middle-finger base), which makes it independent of
-  your distance to the camera. Two thresholds (hysteresis) stop the pinch from flickering.
-- **Cursor**: the midpoint of thumb tip and index tip, smoothed with an exponential filter to
-  reduce jitter.
-- **Click versus draw**: this is decided once, at the moment a pinch **starts**. If the interface
-  takes the click (button, slider, panel), the whole pinch belongs to the interface and nothing is
-  drawn; otherwise the pinch draws.
-- **Undo**: a snapshot of the canvas is taken at the start of each stroke or fill.
+Pinch a colour on the wheel or in the colour history to select it.
 
-## Project structure
+Pinching outside the panel closes it. While the panel is open, drawing on the canvas is disabled.
 
-| File | Role |
+## How It Works
+
+### Hand tracking
+
+MediaPipe detects hand landmarks from the webcam feed. The application uses these landmarks to identify the drawing hand and the command hand.
+
+The default drawing hand is configured with `DRAW_SIDE = "right"` in `HandPaint.py`.
+
+### Pinch detection
+
+The distance between the thumb tip (landmark 4) and index tip (landmark 8) is divided by the distance between the wrist and the middle-finger base.
+
+This normalisation makes pinch detection less dependent on the distance between your hand and the camera.
+
+Two thresholds are used:
+- `PINCH_ON`: starts a pinch.
+- `PINCH_OFF`: ends a pinch.
+
+This hysteresis prevents the pinch state from flickering.
+
+### Cursor smoothing
+
+The cursor is positioned at the midpoint between the thumb tip and index tip.
+
+An exponential smoothing filter reduces cursor jitter.
+
+### Click versus draw
+
+The application decides whether a pinch is a click or a drawing action when the pinch starts.
+
+- If the interface handles the interaction, the pinch is used for a button, slider, or colour selection.
+- Otherwise, the pinch starts a drawing stroke.
+
+### Command gestures
+
+The command hand is managed by `CommandGesture`.
+
+A fist is required to arm the command hand before a command can be triggered.
+
+During a drawing stroke, the command hand is disarmed to prevent accidental actions.
+
+### Undo and redo
+
+The application stores snapshots of the active layer before drawing strokes and fill operations.
+
+Two history stacks are used to support undo and redo, with a maximum of 30 entries each.
+
+## Project Structure
+
+| File / Folder | Role |
 |---|---|
-| `main.py` | Entry point |
-| `HandLandMarker.py` | Base class: webcam loop and MediaPipe detection. Subclasses override the hooks `on_frame`, `render` and `on_key` |
-| `HandPaint.py` | Subclass: pinch gesture, click-versus-draw logic, undo bookkeeping |
-| `Ui.py` | `UI` class: canvas, toolbar, tools, panel, colour history, rendering |
-| `Button.py` | Rectangular button with an action |
-| `Slider.py` | Slider driven by a getter and a setter, so it is not tied to a particular setting |
-| `ColorWheel.py` | HSV colour wheel with adjustable brightness |
-| `Panel.py` | Modal panel grouping the wheel, sliders, preview and colour history |
-| `Brush.py` | Brush settings (colour, thickness) |
+| `main.py` | Application entry point |
+| `HandLandMarker.py` | Base class: webcam capture, MediaPipe detection, and application loop |
+| `HandPaint.py` | Hand-controlled drawing, pinch detection, command gestures, and interaction logic |
+| `Ui.py` | Main UI class: tools, canvas operations, history, and interface management |
+| `Brush.py` | Brush settings, including colour, thickness, and opacity |
+| `Button.py` | Interactive rectangular button |
+| `Slider.py` | Reusable slider with getter and setter callbacks |
+| `ColorWheel.py` | HSV colour wheel |
+| `Panel.py` | Colour panel containing the wheel, sliders, preview, and colour history |
+| `Layer.py` | Individual drawing layer |
+| `LayerStack.py` | Layer management and compositing |
+| `ui/layout.py` | Responsive interface layout calculations |
+| `ui/theme.py` | Interface colours and theme constants |
+| `ui/drawing.py` | Drawing and flood-fill operations |
+| `ui/layers_view.py` | Layer panel rendering and interaction |
+| `ui/renderer.py` | Canvas and interface rendering |
+| `hand_landmarker.task` | MediaPipe hand landmark model |
+| `requirements.txt` | Python dependencies |
 
 ## Configuration
 
-Gesture tuning, in `HandPaint.py`:
+Gesture behaviour can be adjusted in `HandPaint.py`.
 
 | Constant | Meaning |
 |---|---|
+| `DRAW_SIDE` | Selects which hand is used for drawing (`"right"` or `"left"`) |
 | `PINCH_ON` | Pinch ratio below which a pinch starts |
 | `PINCH_OFF` | Pinch ratio above which a pinch ends |
-| `SMOOTHING` | Cursor smoothing: `1` is none, lower values are smoother but laggier |
+| `SMOOTHING` | Cursor smoothing: `1` means no smoothing; lower values produce smoother but slower movement |
 
-Panel layout is computed from the constants at the top of `Ui.py` (`PANEL_MARGIN`, `WHEEL_SIZE`,
-`PREVIEW_SIZE`, `SWATCH_SIZE`, ...). The panel is centred in the frame, so it adapts to the camera
-resolution as long as the frame is large enough to contain it.
+The interface layout is calculated dynamically according to the camera resolution.
 
-## Known limitations
+## Building an Executable (Windows)
+
+The project can be packaged into a standalone application using PyInstaller.
+
+Install PyInstaller:
+
+```bash
+pip install pyinstaller
+```
+
+Build the application:
+
+```bash
+pyinstaller --noconfirm --clean --onedir --windowed --name "HandTrackingPaint" --add-data "hand_landmarker.task;." --collect-all mediapipe --collect-all cv2 --collect-all numpy main.py
+```
+
+The executable will be generated in:
+
+```text
+dist/HandTrackingPaint/
+```
+
+Keep the entire generated folder when distributing the application, including its internal dependencies and the model file.
+
+## Known Limitations
 
 - The eraser paints white, so it assumes a white canvas.
-- Flood fill spreads through any gap in an outline, so a shape that is not fully closed fills the
-  surrounding area too. Strokes are drawn without anti-aliasing to avoid a pale halo between a
-  stroke and the filled area.
-- Toolbar buttons use fixed pixel positions designed for a 640x480 frame.
-- Text is drawn with OpenCV's built-in font, which only supports ASCII characters.
-- Undo keeps the last 10 actions.
+- Flood fill can spread through gaps in an outline. Shapes must be fully closed for predictable results.
+- Strokes are drawn without anti-aliasing to avoid a pale halo between strokes and filled areas.
+- OpenCV's built-in font has limited character support, so some accented characters may not display correctly.
+- Hand tracking accuracy depends on lighting, camera quality, and hand visibility.
+- The application is designed for two visible hands.
 
 ## Troubleshooting
 
-- **`A module that was compiled using NumPy 1.x cannot be run in NumPy 2.x`**: your environment
-  contains packages built for an older NumPy. Create a fresh environment as described above rather
-  than installing into a shared one.
-- **MediaPipe prints `inference_feedback_manager.cc` warnings**: harmless, they can be ignored.
-- **Black window or no camera**: the app opens camera index `0`. Close other applications that
-  use the webcam, or change `camera_index` in `HandLandMarker.py`.
-- **Cannot find `hand_landmarker.task`**: check that the file is in the folder you launch the
-  app from.
+**`A module that was compiled using NumPy 1.x cannot be run in NumPy 2.x`**
+
+Your environment contains packages built against an older NumPy version. Create a fresh environment and reinstall the dependencies.
+
+**MediaPipe prints `inference_feedback_manager.cc` warnings**
+
+These warnings are generally harmless and can be ignored if hand tracking works correctly.
+
+**Black camera window or no camera detected**
+
+The application uses camera index `0` by default. Close other applications using the webcam or change `camera_index` in `HandLandMarker.py`.
+
+**Cannot find `hand_landmarker.task`**
+
+Make sure the model file is in the project folder and that you launch the application from the correct directory.
+
+**The gestures are not detected correctly**
+
+Try improving the lighting, keeping both hands visible, and avoiding hands overlapping in the camera view.
 
 ## Roadmap
 
-- Brush opacity
-- Layers
-- Zoom
-- Nicer interface text (accents, centred labels) using Pillow
+- Zoom and canvas navigation.
+- Improved text rendering and typography.
+- More customisable gesture controls.
+- Additional drawing tools.
 
 ## Credits
 
-Hand tracking by [MediaPipe](https://ai.google.dev/edge/mediapipe), image handling by
-[OpenCV](https://opencv.org/).
+Hand tracking powered by [MediaPipe](https://ai.google.dev/edge/mediapipe).
+
+Image processing powered by [OpenCV](https://opencv.org/).
 
 ## License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-Not specified yet.
+### Third-Party Licenses
+This application uses Google MediaPipe Hand Landmarker, which is licensed under the Apache License 2.0.
+
