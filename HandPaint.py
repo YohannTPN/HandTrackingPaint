@@ -20,8 +20,7 @@ class HandPaint(HandLandMarker):
     DRAW_SIDE = "right"   # "right" : ta main droite dessine, la gauche commande ("left" pour l'inverse)
 
     # Name displayed on the screen for each placement of the control hand
-    COMMAND_NAMES = {"one": "Undo", "two": "Restore", "three": "Prev layer",
-                     "four": "Next layer", "ok": "Panel"}
+    COMMAND_NAMES = {"one": "Undo", "two": "Restore", "three": "Brush", "four": "Eraser", "ok": "Panel"}
 
     def __init__(self, model_path, ui=None):
         super().__init__(model_path, num_hands=2)
@@ -40,8 +39,8 @@ class HandPaint(HandLandMarker):
         self.commands = {
             "one": self.ui.pop_last_action,
             "two": self.ui.restore_state,
-            "three": self.ui.select_previous_layer,
-            "four": self.ui.select_next_layer,
+            "three": self.ui.use_brush,
+            "four": self.ui.use_eraser,
             "ok": self.ui.toggle_panel,
         }
 
@@ -182,4 +181,6 @@ class HandPaint(HandLandMarker):
     def on_key(self, key):
         if key == ord('s'):
             self.ui.save()
+
+        self.ui.handle_tutorial_key(key)
         return super().on_key(key)

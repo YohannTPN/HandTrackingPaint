@@ -41,6 +41,7 @@ class UI:
         self.drawing = DrawingController(self)
         self.layers_view = LayersView(self)
         self.renderer = Renderer(self)
+        self.show_tutorial = True
 
     # ---- Canvas and adaptive layout ----
     def ensure_canvas(self, width, height):
@@ -112,6 +113,145 @@ class UI:
             Slider((sx,base_y+86),(slider_w,15),1,255,self.get_opacity,self.set_opacity,"Opacity"),
         ]
         self.panel=Panel((px,py),(panel_w,panel_h),sliders,self.color_wheel,preview_pos,preview_size,self.preview_color,swatches,self.get_color_history)
+
+
+    
+    def handle_tutorial_key(self, key):
+        """Handle key presses related to the tutorial display."""
+
+        if key in (ord("h"), ord("H")):
+            self.show_tutorial = not self.show_tutorial
+
+
+    def draw_tutorial(self, frame):
+        """Draw the tutorial overlay on the given frame."""
+
+        import cv2
+
+        h, w = frame.shape[:2]
+
+        # Dimensions du panneau
+        panel_w = min(650, w - 40)
+        panel_h = min(490, h - 40)
+
+        x = (w - panel_w) // 2
+        y = (h - panel_h) // 2
+
+        # Fond sombre
+        overlay = frame.copy()
+        cv2.rectangle(
+            overlay,
+            (x, y),
+            (x + panel_w, y + panel_h),
+            (45, 51, 62),
+            -1
+        )
+
+        cv2.addWeighted(overlay, 0.94, frame, 0.06, 0, frame)
+
+        cv2.rectangle(
+            frame,
+            (x, y),
+            (x + panel_w, y + panel_h),
+            (244, 133, 66),
+            2
+        )
+
+        cv2.putText(
+            frame,
+            "HAND TRACKING PAINT",
+            (x + 25, y + 45),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.85,
+            (244, 133, 66),
+            2,
+            cv2.LINE_AA
+        )
+
+        cv2.putText(
+            frame,
+            "GESTURE TUTORIAL",
+            (x + 25, y + 78),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.55,
+            (220, 230, 240),
+            1,
+            cv2.LINE_AA
+        )
+
+        cv2.line(
+            frame,
+            (x + 25, y + 95),
+            (x + panel_w - 25, y + 95),
+            (70, 83, 102),
+            1
+        )
+
+        instructions = [
+            ("DRAWING HAND - RIGHT", [
+                "Pinch thumb + index finger",
+                "Move your hand to draw"
+            ]),
+            ("COMMAND HAND - LEFT", [
+                "Make a fist to activate commands",
+                "1 finger : Undo",
+                "2 fingers : Redo",
+                "3 fingers : Brush",
+                "4 fingers : Eraser",
+                "OK gesture : Toggle color panel"
+            ])
+        ]
+
+        current_y = y + 135
+
+        for section, lines in instructions:
+            cv2.putText(
+                frame,
+                section,
+                (x + 25, current_y),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.58,
+                (244, 133, 66),
+                2,
+                cv2.LINE_AA
+            )
+
+            current_y += 30
+
+            for line in lines:
+                cv2.putText(
+                    frame,
+                    "- " + line,
+                    (x + 40, current_y),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.48,
+                    (232, 237, 245),
+                    1,
+                    cv2.LINE_AA
+                )
+                current_y += 27
+
+            current_y += 12
+
+        cv2.line(
+            frame,
+            (x + 25, y + panel_h - 65),
+            (x + panel_w - 25, y + panel_h - 65),
+            (70, 83, 102),
+            1
+        )
+
+        
+        cv2.putText(
+            frame,
+            "H : OPEN / CLOSE TUTORIAL",
+            (x + 25, y + panel_h - 15),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.43,
+            (170, 182, 200),
+            1,
+            cv2.LINE_AA
+        )
 
     # ---- Tools ----
     def current_brush(self):
@@ -227,6 +367,14 @@ class UI:
         cv2.imwrite(filename,self.layers.composite())
         print(f"Drawing saved : {filename}")
         return filename
-    def show(self,camera_frame,cursor=None,drawing=False):
-        cv2.imshow("Camera",camera_frame)
-        cv2.imshow("Paint",self.renderer.compose(cursor,drawing))
+    
+    def show(self, camera_frame, cursor=None, drawing=False):
+        cv2.imshow("Camera", camera_frame)
+
+        paint_frame = self.renderer.compose(cursor, drawing)
+
+        if self.show_tutorial:
+            self.draw_tutorial(paint_frame)
+
+        cv2.imshow("Paint", paint_frame)
+
