@@ -6,6 +6,13 @@ The application uses two hands:
 - **Drawing hand:** controls the cursor and draws using a pinch gesture.
 - **Command hand:** triggers tools and interface actions using predefined gestures.
 
+## Download
+
+Download the latest Windows version from
+[GitHub Releases](../../releases/latest).
+
+Extract the ZIP archive and launch `HandTrackingPaint.exe`.
+
 ## Features
 
 - **Pinch to draw:** pinch your thumb and index finger together and move your hand to draw.
